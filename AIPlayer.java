@@ -182,6 +182,8 @@ public class AIPlayer extends Player {
 		
 		//to know where the unit can be placed on
 		gs.gameBoard.calculateAvailableSummonPlace(gs);
+		//for test
+		gs.gameBoard.showAvailableSummonTile(out);
 		
 		if(gs.gameBoard.getTile(tilex, tiley).isAllowSummon()) {
 			//if this tile is summonable
@@ -189,7 +191,7 @@ public class AIPlayer extends Player {
 			if (c.getManacost() <= mana) {
 				this.placeAUnit(gs, out, tilex, tiley, c);
 				gs.aiPlayer.setMana(mana -= c.getManacost());
-				System.out.println(c.getCardName() + "is on board now!");
+				System.out.println(c.getCardname() + "is on board now!");
 			} else {
 				System.out.println("Not enough mana!");
 			}
@@ -197,7 +199,8 @@ public class AIPlayer extends Player {
 			System.out.println("This tile is not summonable!");
 		}
 			
-		gs.gameBoard.cleanBoardFlag();
+		gs.gameBoard.drawBoard(out);
+		
 	}
 
 	// 将某个spell释放给某个单位 cast a spell to a unit
