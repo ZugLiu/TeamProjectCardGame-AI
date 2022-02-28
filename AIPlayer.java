@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import akka.actor.ActorRef;
 import commands.BasicCommands;
@@ -12,6 +13,7 @@ import structures.basic.Player;
 import structures.basic.Tile;
 import structures.basic.Unit;
 import structures.basic.ability.Spell;
+import utils.Attack;
 import utils.BasicObjectBuilders;
 import utils.Preparation;
 import utils.StaticConfFiles;
@@ -27,6 +29,11 @@ public class AIPlayer extends Player {
 		// AI player will do something to modify its cards and units
 		this.AIHand(gameState);
 
+		// play a card on a certain tile
+		i = 7;
+		j = 3;
+		this.checkUnitCostAndPlace(gameState, hand.get(0), out, i, j);
+
 		// get enemy and friendly units and their positions
 		this.getEnemyUnitOnBoard(gameState);
 		this.getFriendlyUnitOnBoard(gameState);
@@ -35,20 +42,17 @@ public class AIPlayer extends Player {
 		this.getEnemyAvatarOnBoard(gameState);
 		this.getFriendlyAvatarOnBoard(gameState);
 
-		// play a card on a certain tile
-		i = 7;
-		j = 3;
-		this.checkUnitCostAndPlace(gameState, hand.get(0), out, i, j);
-		
-		
-		
+		this.moveTo(gameState, getAvatar(), out, i - 1, j);
+
+		this.attack(gameState, getAvatar(), out);
+
 		try {
 			Thread.sleep(2000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 		// AI finish its round, add 1 to round number
 		switchToHumanPlayer(out, gameState);
 	}
@@ -174,20 +178,21 @@ public class AIPlayer extends Player {
 		System.out.println(card.getCardname() + "is on board");
 		System.out.println(unit.getAbilities());
 	}
-	
-	// check if the target tile is summonable and if the mana is enough to summon the unit
+
+	// check if the target tile is summonable and if the mana is enough to summon
+	// the unit
 	private void checkUnitCostAndPlace(GameState gs, Card c, ActorRef out, int tilex, int tiley) {
 		int mana = gs.aiPlayer.getMana();
 		gs.selectedCard = c;
-		
-		//to know where the unit can be placed on
+
+		// to know where the unit can be placed on
 		gs.gameBoard.calculateAvailableSummonPlace(gs);
-		//for test
+		// for test
 		gs.gameBoard.showAvailableSummonTile(out);
-		
-		if(gs.gameBoard.getTile(tilex, tiley).isAllowSummon()) {
-			//if this tile is summonable
-			//to know whether the cost is larger than mana
+
+		if (gs.gameBoard.getTile(tilex, tiley).isAllowSummon()) {
+			// if this tile is summonable
+			// to know whether the cost is larger than mana
 			if (c.getManacost() <= mana) {
 				this.placeAUnit(gs, out, tilex, tiley, c);
 				gs.aiPlayer.setMana(mana -= c.getManacost());
@@ -195,21 +200,48 @@ public class AIPlayer extends Player {
 			} else {
 				System.out.println("Not enough mana!");
 			}
-		}else {
+		} else {
 			System.out.println("This tile is not summonable!");
 		}
-			
+
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		gs.gameBoard.drawBoard(out);
-		
+
 	}
 
-	// 将某个spell释放给某个单位 cast a spell to a unit
+	// cast a spell to a unit
 	private void castSpell() {
 
 	}
 
-	// 指挥一个单位移动到目标坐标 move a unit to a tile
-	private void moveTo(GameState gs, Unit u, ActorRef out, int tilex, int tiley) {
+	// move a unit to a tile. If this movement is successful, return true; else
+	// return false.
+	private boolean moveTo(GameState gs, Unit u, ActorRef out, int tilex, int tiley) {
+		gs.selectedUnit = u;
+
+		// check if the unit is stunned or not. If it is stunned, abort this move
+		if (gs.stunUnitList.indexOf(u) != -1) {
+			System.out.println("Movement failed!");
+			return false;
+		}
+
+		// calculate which tile the unit can move to
+		gs.gameBoard.calculateAvaliableMovePlace(gs, gs.gameBoard.getPlayer1UnitList(), u.getPosition().getTilex(),
+				u.getPosition().getTiley());
+
+		// if the destination is out of move range, abort this move
+		if (!gs.gameBoard.getTile(tilex, tiley).isAllowMove()) {
+			System.out.println("Movement failed!");
+			return false;
+		}
+
+		// gs.gameBoard.showAvailableMoveTile(out);
+
 		// play animation
 		BasicCommands.moveUnitToTile(out, gs.selectedUnit, gs.gameBoard.getTile(tilex, tiley));
 
@@ -224,10 +256,59 @@ public class AIPlayer extends Player {
 
 		// cancel selection
 		gs.selectedUnit = null;
+
+		// gs.gameBoard.drawBoard(out);
+		gs.gameBoard.cleanBoardFlag();
+
+		System.out.println("Movement successful!");
+		return true;
 	}
 
-	// 计算应该走到那个砖块
-	private void caculateToWhichTile() {
+	// command a unit to attack another unit (in its attack range)
+	private void attack(GameState gs, Unit offensive, ActorRef out) {
+		gs.selectedUnit = offensive;
+
+		int x = gs.selectedUnit.getPosition().getTilex();
+		int y = gs.selectedUnit.getPosition().getTiley();
+
+		// get a list of all enemy units on board
+		ArrayList<Unit> enemyList = new ArrayList<Unit>();
+		enemyList.addAll(this.enemyUnitPos.keySet());
+
+		// calculate the available attack target of friendly units
+		gs.gameBoard.calculateAvaliableAttackTarget(gs, enemyList);
+		gs.gameBoard.showAvailableAttackTile(out);
+		
+		// get all attackable tiles
+		ArrayList<Tile> attackableTiles = new ArrayList<>();
+		for (int i = 0; i < 9; i++) {
+			for (int j = 0; j < 5; j++) {
+				if (gs.gameBoard.getTile(i, j).isAllowAttack() == true) {
+					attackableTiles.add(gs.gameBoard.getTile(i, j));
+				}
+			}
+		}
+		
+		if(attackableTiles.size()==0) {
+			System.out.println("No attackable units!");
+			return;
+		}else {
+			int attackableX = attackableTiles.get(0).getTilex();
+			int attackableY = attackableTiles.get(0).getTiley();
+			for(Unit unit : this.enemyUnitPos.keySet()) {
+				if(unit.getPosition().getTilex() == attackableX && unit.getPosition().getTiley() == attackableY) {
+					Attack.unitAttackAnotherUnit(out, offensive, unit);
+
+				}
+			}
+			
+		}
+
+		
+	}
+
+	// calculate the destination
+	private void calculateToWhichTile() {
 
 	}
 
