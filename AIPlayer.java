@@ -24,17 +24,16 @@ public class AIPlayer extends Player {
 	public void doSomething(ActorRef out, GameState gameState) {
 		// AI player will do something to modify its cards and units
 		this.AIHand(gameState);
+		
+		//get enemy and friendly units and their positions
 		this.getEnemyUnitOnBoard(gameState);
 		this.getFriendlyUnitOnBoard(gameState);
-		System.out.println("Enemy Unit Positions:");
-		for(Map.Entry<Unit, ArrayList<Integer>> entries : enemyUnitPos.entrySet()){
-			System.out.println(entries.getKey() + ": " + entries.getValue() );
-		}
-		System.out.println("Friendly Unit Positions: ");
-		for(Map.Entry<Unit, ArrayList<Integer>> entries : friendlyUnitPos.entrySet()){
-			System.out.println(entries.getKey() + ": " + entries.getValue() );
-		}
 		
+		//get enemy and friendly avatars and their positions
+		this.getEnemyAvatarOnBoard(gameState);
+		this.getFriendlyAvatarOnBoard(gameState);
+		
+		//play a card on a certain tile
 		int i = 7, j = 3;
 		Card c1 = this.hand.get(0);
 		System.out.println(c1.getCardName() + c1.getId());
@@ -78,8 +77,30 @@ public class AIPlayer extends Player {
 
 			this.enemyUnitPos.put(u, pos);
 		}
+		
+		//for test
+		System.out.println("Enemy Unit Positions:");
+		for(Map.Entry<Unit, ArrayList<Integer>> entries : enemyUnitPos.entrySet()){
+			System.out.println(entries.getKey().getId() + ": " + entries.getValue() );
+		}
 	}
 
+	private ArrayList<Integer> getEnemyAvatarOnBoard(GameState gs) {
+		ArrayList<Integer> temp = null;
+		for(Map.Entry<Unit, ArrayList<Integer>> entries : enemyUnitPos.entrySet()) {
+			if(entries.getKey().getId() == 40) { // the id of enemy avatar is 40
+				temp = entries.getValue();
+			}
+		}
+		//for test
+		System.out.print("Enemy Avatar Position is: ");
+		for(Integer i : temp) {
+			System.out.print(i + " ");
+		}
+		System.out.println();
+		return temp;
+	}
+	
 	private void AIHand(GameState gameState) {
 		hand = gameState.aiPlayer.getHand();
 	}
@@ -94,6 +115,29 @@ public class AIPlayer extends Player {
 
 			this.friendlyUnitPos.put(u, pos);
 		}
+		
+		//for test
+		System.out.println("Friendly Unit Positions: ");
+		for(Map.Entry<Unit, ArrayList<Integer>> entries : friendlyUnitPos.entrySet()){
+			System.out.println(entries.getKey().getId() + ": " + entries.getValue() );
+		}
+		
+	}
+	
+	private ArrayList<Integer> getFriendlyAvatarOnBoard(GameState gs) {
+		ArrayList<Integer> temp = null;
+		for(Map.Entry<Unit, ArrayList<Integer>> entries : friendlyUnitPos.entrySet()) {
+			if(entries.getKey().getId() == 41) { // the id of friendly avatar is 40
+				temp = entries.getValue();
+			}
+		}
+		//for test
+		System.out.print("Friendly Avatar Position is: ");
+		for(Integer i : temp) {
+			System.out.print(i + " ");
+		}
+		System.out.println();
+		return temp;
 	}
 
 	// 将某个单位放置在棋牌上的某个坐标 place a unit on a tile
